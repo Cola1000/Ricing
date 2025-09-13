@@ -1,0 +1,47 @@
+configuration {
+  show-icons:        true;
+  icon-theme:        "hicolor";
+  display-preview:   " ";   /* label for the modi name if you want */
+}
+
+* {
+  font: "JetBrainsMono Nerd Font 12";
+}
+
+window {
+  width: 60%;
+}
+
+mainbox {
+  children: [ inputbar, listview ];
+}
+
+listview {
+  columns: 2;                 /* two columns layout */
+  lines: 12;
+  fixed-height: true;
+  cycle: false;
+}
+
+element {
+  padding: 6px 10px;
+}
+
+element-icon {
+  size: 192;                  /* make icons large – our preview uses this */
+  border: 0;
+}
+
+entry, inputbar, textbox {
+  padding: 6px 10px;
+}
+
+/* Visual hint: dim the right column text (we only care about its icon) */
+element-text {
+  foreground: #bbbbbb;
+}
+
+/* Optional: reduce spacing so the icon fits neatly */
+listview {
+  spacing: 6px;
+}

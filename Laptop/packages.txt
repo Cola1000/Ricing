@@ -1,0 +1,10 @@
+cava
+fastfetch
+kitty
+rofi-lbonn-wayland-git-1.7.9.wayland1.r1.gd4b16e6f-1
+waybar
+starship
+hypridle
+hyprlock
+matugen
+swww
