@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script installs the 'laptop' dotfiles configuration.
+# This script installs this folder's dotfiles configuration.
 # It handles package dependencies, backs up existing configs, and symlinks the new ones.
 
 # --- Configuration ---
@@ -44,43 +44,66 @@ install_dependencies() {
 
     # Detect package manager
     if command -v pacman &> /dev/null; then
-        PACKAGE_MANAGER="pacman"
+        # This is an Arch-based system, check for yay
+        if ! command -v yay &> /dev/null; then
+            echo -e "${COLOR_RED}Error: 'yay' is not installed.${COLOR_RESET}"
+            echo -e "${COLOR_YELLOW}This script requires 'yay' to install AUR packages. Please install it first.${COLOR_RESET}"
+            echo -e "${COLOR_YELLOW}You can find instructions here: https://github.com/Jguer/yay${COLOR_RESET}"
+            exit 1
+        fi
+        
+        echo "Using 'yay' to install packages one-by-one..."
+        
+        while IFS= read -r package || [[ -n "$package" ]]; do
+            # Skip empty lines in packages.txt
+            if [ -z "$package" ]; then continue; fi
+
+            echo -e "\n${COLOR_BLUE}--> Processing: ${COLOR_GREEN}${package}${COLOR_RESET}"
+            
+            # First attempt: normal, secure installation
+            yes | yay -S --needed --noconfirm "$package"
+            
+            # Check if the last command failed
+            if [ $? -ne 0 ]; then
+                echo -e "${COLOR_YELLOW}Warning: Normal installation of '$package' failed. This is likely a GPG key issue.${COLOR_RESET}"
+                echo -e "${COLOR_YELLOW}--> Retrying installation for '$package' by skipping the GPG check...${COLOR_RESET}"
+                
+                # Second attempt: skip GPG check as a fallback
+                yes | yay -S --needed --noconfirm --nopgpfetch "$package"
+                
+                if [ $? -ne 0 ]; then
+                    echo -e "${COLOR_RED}Error: Failed to install '$package' even after skipping the GPG check.${COLOR_RESET}"
+                    echo -e "${COLOR_RED}Please try installing it manually to diagnose the issue.${COLOR_RESET}"
+                else
+                    echo -e "${COLOR_GREEN}'$package' installed successfully (GPG check was skipped).${COLOR_RESET}"
+                fi
+            else
+                echo -e "${COLOR_GREEN}'$package' installed successfully.${COLOR_RESET}"
+            fi
+        done < "$PACKAGE_FILE"
+
     elif command -v apt-get &> /dev/null; then
-        PACKAGE_MANAGER="apt-get"
+        # Fallback for Debian/Ubuntu systems
+        echo "Using 'apt-get' to install packages."
+        # Note: This will fail for AUR packages.
+        cat "$PACKAGE_FILE" | xargs sudo apt-get install -y
     else
         echo -e "${COLOR_RED}Error: Unsupported package manager. Please install packages from '$PACKAGE_FILE' manually.${COLOR_RESET}"
         return
     fi
     
-    echo "Using '$PACKAGE_MANAGER' to install packages."
-    
-    # Read packages from file and install them
-    while IFS= read -r package || [[ -n "$package" ]]; do
-        if [ -n "$package" ]; then
-            echo -e "  -> Installing ${COLOR_GREEN}${package}${COLOR_RESET}..."
-            if [ "$PACKAGE_MANAGER" == "pacman" ]; then
-                sudo pacman -S --noconfirm --needed "$package"
-            elif [ "$PACKAGE_MANAGER" == "apt-get" ]; then
-                sudo apt-get install -y "$package"
-            fi
-        fi
-    done < "$PACKAGE_FILE"
-    
-    echo -e "${COLOR_GREEN}Dependency installation complete.${COLOR_RESET}"
+    echo -e "${COLOR_GREEN}Dependency installation is now complete.${COLOR_RESET}"
 }
 
 # --- Step 2: Backup Existing Configs ---
 backup_configs() {
     echo -e "\n${COLOR_BLUE}Step 2: Backing up existing configuration files...${COLOR_RESET}"
     
-    # Create the config directory if it doesn't exist
     mkdir -p "$DEST_DIR"
 
-    # Get a list of all items (files and dirs) to be symlinked
     local items_to_link=()
     for item in "$SOURCE_DIR"/*; do
         base_item=$(basename "$item")
-        # Exclude this script and the package file from being linked
         if [ "$base_item" != "install.sh" ] && [ "$base_item" != "$PACKAGE_FILE" ]; then
             items_to_link+=("$base_item")
         fi
@@ -125,7 +148,6 @@ symlink_dotfiles() {
         dest_path="$DEST_DIR/$item_name"
         
         echo -e "\n  -> Linking '$item_name' to '$DEST_DIR'"
-        # Use -T to treat the destination as a normal file/dir, which is safer
         ln -s -T "$source_path" "$dest_path"
         progress_bar $current_item $total_items
     done

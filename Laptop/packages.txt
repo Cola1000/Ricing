@@ -1,10 +1,12 @@
 cava
 fastfetch
+hyprland
 kitty
-rofi-lbonn-wayland-git-1.7.9.wayland1.r1.gd4b16e6f-1
+rofi-wayland
 waybar
+wlogout
 starship
 hypridle
 hyprlock
-matugen
+matugen-bin
 swww
